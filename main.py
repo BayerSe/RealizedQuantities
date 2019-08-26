@@ -8,10 +8,8 @@ from scipy.special import gamma
 
 def realized_quantity(fun):
     """Applies the function 'fun' to each day separately"""
-    return intraday_returns.groupby(pd.TimeGrouper("1d")).apply(fun)[index]
+    return intraday_returns.groupby(pd.Grouper(freq="1d")).apply(fun)[index]
 
-# TODO add subsampling
-# TODO add more realized quantities (kernel, intraday range, etc.)
 
 if __name__ == "__main__":
 
@@ -25,10 +23,10 @@ if __name__ == "__main__":
 
     # Load data and store the intraday returns
     data = pd.read_hdf("in/" + asset + "_" + sampling + ".h5", "table")
-    intraday_returns = data.groupby(pd.TimeGrouper("1d")).apply(lambda x: np.log(x / x.shift(1))).dropna()
+    intraday_returns = data.groupby(pd.Grouper(freq="1d")).apply(lambda x: np.log(x / x.shift(1))).dropna()
 
     # Index of all days
-    index = data.groupby(pd.TimeGrouper("1d")).first().dropna().index
+    index = data.groupby(pd.Grouper(freq="1d")).first().dropna().index
 
     # Some constants
     mu_1 = np.sqrt((2 / np.pi))
@@ -74,7 +72,7 @@ if __name__ == "__main__":
     rv_p = realized_quantity(lambda x: (x ** 2 * (x > 0)).sum())
 
     # Signed jump variation (Patton and Sheppard, 2015)
-    sjv = rv_p ** 0.5 - rv_m ** 0.5
+    sjv = rv_p - rv_m
     sjv_p = sjv * (sjv > 0)
     sjv_m = sjv * (sjv < 0)
 
@@ -87,6 +85,6 @@ if __name__ == "__main__":
     # Export data
     out = pd.concat([r_cc, r_oc, rav, rv ** .5, bv ** .5, rv_m ** 0.5, rv_p ** 0.5,
                      iv, jv, sjv, sjv_p, sjv_m, rs, rk], axis=1)
-    out.columns = np.array(['r_cc', 'r_oc', 'rav', 'rvol', 'bvol', 'rvol_m', 'rvol_p',
-                            'ivol', 'jvol', 'sjv', 'sjv_p', 'sjv_m', 'rs', 'rk'])
+    out.columns = ['r_cc', 'r_oc', 'rav', 'rvol', 'bvol', 'rvol_m', 'rvol_p',
+                   'ivol', 'jvol', 'sjv', 'sjv_p', 'sjv_m', 'rs', 'rk']
     out.to_csv('out/realized_quantities_' + asset + "_" + sampling + ".csv")
